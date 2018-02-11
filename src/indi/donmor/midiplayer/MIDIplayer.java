@@ -2,6 +2,7 @@
 package indi.donmor.midiplayer;
 
 import java.awt.EventQueue;
+import java.awt.Image;
 import java.awt.Toolkit;
 import java.io.File;
 import java.io.FileInputStream;
@@ -74,6 +75,10 @@ public class MIDIplayer extends JFrame
 	
 	private static JSlider			slider;
 	
+	private static Toolkit			toolkit;
+	
+	private static Image					icon;
+	
 	{
 		
 	}
@@ -94,11 +99,13 @@ public class MIDIplayer extends JFrame
 				
 				
 				Properties prop = new Properties();
+				toolkit = Toolkit.getDefaultToolkit();
+				icon = toolkit.createImage("midi.gif");
 				File vLd = null;
 				boolean vRep = false;
 				int vDev = 0;
-				int vX = (Toolkit.getDefaultToolkit().getScreenSize().width - 600) / 2;
-				int vY = (Toolkit.getDefaultToolkit().getScreenSize().height - 400) / 2;
+				int vX = (toolkit.getScreenSize().width - 600) / 2;
+				int vY = (toolkit.getScreenSize().height - 400) / 2;
 				try
 				{
 					File propFile = new File("midiplayer.properties");
@@ -306,6 +313,7 @@ public class MIDIplayer extends JFrame
 			// TODO Auto-generated catch block
 			// e1.printStackTrace();
 		}
+		setIconImage(icon);
 		setResizable(false);
 		setTitle("MIDI Player");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
