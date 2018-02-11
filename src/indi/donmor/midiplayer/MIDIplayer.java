@@ -100,6 +100,7 @@ public class MIDIplayer extends JFrame
 				
 				Properties prop = new Properties();
 				toolkit = Toolkit.getDefaultToolkit();
+//				System.out.println(getClass().getResource("/resources/images/midi.gif"));
 				icon = toolkit.createImage(getClass().getResource("/resources/images/midi.gif"));
 				File vLd = null;
 				boolean vRep = false;
