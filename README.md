@@ -13,7 +13,7 @@
 * ######Coming soon (in 1000yrs =w= )
 
 ###Bugs
-* ######The "Real Time Sequencer" doesn't work
+* ######The "Real Time Sequencer" doesn't work. Someday I may remove it from the list.
 * ######More bugs to find (Have been learning Java for 2 days...)
 
 ######This project is open-sourced and licensed under MIT.
