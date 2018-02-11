@@ -279,8 +279,7 @@ public class MIDIplayer extends JFrame
 		});
 		try
 		{
-			// UIManager.setLookAndFeel("com.sun.java.swing.plaf.nimbus.NimbusLookAndFeel");//
-			// Nimbus
+			// UIManager.setLookAndFeel("com.sun.java.swing.plaf.nimbus.NimbusLookAndFeel");//Nimbus
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());// CurrentOS
 			// UIManager.setLookAndFeel("com.sun.java.swing.plaf.motif.MotifLookAndFeel");//Motif
 			// UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());//Java
