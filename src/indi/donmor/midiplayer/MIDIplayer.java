@@ -9,9 +9,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
-import java.util.Timer;
-import java.util.TimerTask;
-
 import indi.donmor.midiplayer.MIDICore;
 import indi.donmor.midiplayer.MIDICore.cycleType;
 
@@ -32,12 +29,13 @@ import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.JToggleButton;
-import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileFilter;
-import javax.swing.event.ChangeEvent;
-import java.awt.event.MouseMotionAdapter;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
 
 public class MIDIplayer extends JFrame
 {
@@ -51,15 +49,9 @@ public class MIDIplayer extends JFrame
 	
 	private static final long		serialVersionUID	= 1L;
 	
-	private static boolean			dragCD;
-	
-	private boolean					dragNotFirstRun;
+	private static boolean			isDragging, isKeySeeking;
 	
 	private static boolean			doFileOpened;
-	
-	private int						dragged;
-	
-	// private static Timer mCycle;
 	
 	private JPanel					contentPane;
 	
@@ -100,7 +92,7 @@ public class MIDIplayer extends JFrame
 				
 				Properties prop = new Properties();
 				toolkit = Toolkit.getDefaultToolkit();
-//				System.out.println(getClass().getResource("/resources/images/midi.gif"));
+				// System.out.println(getClass().getResource("/resources/images/midi.gif"));
 				icon = toolkit.createImage(getClass().getResource("/resources/images/midi.gif"));
 				File vLd = null;
 				boolean vRep = false;
@@ -171,8 +163,7 @@ public class MIDIplayer extends JFrame
 				list.setListData(core.devx);
 				list.setSelectedIndex(core.devID);
 				txtCurrentdev.setText(list.getSelectedValue());
-				Timer mCycle = new Timer();
-				mCycle.schedule(new TimerTask()
+				Thread cycle = new Thread()
 				{
 					
 					
@@ -180,34 +171,117 @@ public class MIDIplayer extends JFrame
 					{
 						
 						
-						if (core.isPlaying())
+						while (true)
 						{
-							btnPlaypause.setText("Pause");
-							if (!dragCD) slider.setValue((int) (core.getMidiProg() / 1000));
-							if (!dragCD)
-								currentTime.setText(microsecondsToTimeString(core.getMidiProg()));
-							else
-								currentTime.setText(millisecondsToTimeString(slider.getValue()));
-						}
-						else
-						{
-							btnPlaypause.setText("Play");
-							if (!dragCD)
+							if (core.isPlaying())
 							{
-								if (core.getMidiProg() == core.getLength()) core.midiNavigate(0);
-								slider.setValue((int) (core.midiPauseProg / 1000));
+								btnPlaypause.setText("Pause");
+								if (!isDragging && !isKeySeeking) slider.setValue((int) (core.getMidiProg() / 1000));
+								if (!isDragging && !isKeySeeking)
+									currentTime.setText(microsecondsToTimeString(core.getMidiProg()));
+								else
+									currentTime.setText(millisecondsToTimeString(slider.getValue()));
 							}
-							if (!dragCD)
-								currentTime.setText(microsecondsToTimeString(core.midiPauseProg));
 							else
-								currentTime.setText(millisecondsToTimeString(slider.getValue()));
+							{
+								btnPlaypause.setText("Play");
+								if (!isDragging && !isKeySeeking)
+								{
+									if (core.getMidiProg() == core.getLength()) core.midiNavigate(0);
+									slider.setValue((int) (core.midiPauseProg / 1000));
+								}
+								if (!isDragging && !isKeySeeking)
+									currentTime.setText(microsecondsToTimeString(core.midiPauseProg));
+								else
+									currentTime.setText(millisecondsToTimeString(slider.getValue()));
+							}
+							try
+							{
+								sleep(25);
+							}
+							catch (InterruptedException e)
+							{
+								// TODO Auto-generated catch block
+							}
 						}
 					}
-				}, 100, 100);
+				};
+				cycle.start();
+				// Timer mCycle = new Timer();
+				// mCycle.schedule(new TimerTask()
+				// {
+				//
+				//
+				// public void run()
+				// {
+				//
+				//
+				// // if (core.isPlaying())
+				// // {
+				// // btnPlaypause.setText("Pause");
+				// // if (!dragCD) slider.setValue((int)
+				// // (core.getMidiProg() / 1000));
+				// // if (!dragCD)
+				// //
+				// currentTime.setText(microsecondsToTimeString(core.getMidiProg()));
+				// // else
+				// //
+				// currentTime.setText(millisecondsToTimeString(slider.getValue()));
+				// // }
+				// // else
+				// // {
+				// // btnPlaypause.setText("Play");
+				// // if (!dragCD)
+				// // {
+				// // if (core.getMidiProg() == core.getLength())
+				// // core.midiNavigate(0);
+				// // slider.setValue((int) (core.midiPauseProg / 1000));
+				// // }
+				// // if (!dragCD)
+				// //
+				// currentTime.setText(microsecondsToTimeString(core.midiPauseProg));
+				// // else
+				// //
+				// currentTime.setText(millisecondsToTimeString(slider.getValue()));
+				// // }
+				// if (core.isPlaying())
+				// {
+				// btnPlaypause.setText("Pause");
+				// if (!isDragging && !isKeySeeking) slider.setValue((int)
+				// (core.getMidiProg() / 1000));
+				// if (!isDragging && !isKeySeeking)
+				// currentTime.setText(microsecondsToTimeString(core.getMidiProg()));
+				// else
+				// currentTime.setText(millisecondsToTimeString(slider.getValue()));
+				// }
+				// else
+				// {
+				// btnPlaypause.setText("Play");
+				// if (!isDragging && !isKeySeeking)
+				// {
+				// if (core.getMidiProg() == core.getLength())
+				// core.midiNavigate(0);
+				// slider.setValue((int) (core.midiPauseProg / 1000));
+				// }
+				// if (!isDragging && !isKeySeeking)
+				// currentTime.setText(microsecondsToTimeString(core.midiPauseProg));
+				// else
+				// currentTime.setText(millisecondsToTimeString(slider.getValue()));
+				// }
+				// }
+				// }, 1, 1);
 				
 				if (vLd != null && vLd.exists()) lastDirectory = vLd;
 				// System.out.println(lastDirectory);
 				tglbtnRepeat.setSelected(vRep);
+				if (tglbtnRepeat.isSelected())
+				{
+					core.repeat = cycleType.whole;
+				}
+				else
+				{
+					core.repeat = cycleType.none;
+				}
 				
 				String arg = "";
 				try
@@ -323,37 +397,37 @@ public class MIDIplayer extends JFrame
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
 		contentPane.setLayout(null);
-		Timer cd = new Timer();
-		cd.schedule(new TimerTask()
-		{
-			
-			
-			public void run()
-			{
-				
-				
-				if (dragCD)
-				{
-					dragged += 1;
-					// System.out.println(dragged + "?");
-					if (dragged >= 5)
-					{
-						// System.out.println(dragged + "!");
-						if (doFileOpened) core.midiNavigate(((long) slider.getValue()) * 1000);
-						dragCD = false;
-					}
-					// System.out.println(dragCD);
-				}
-			}
-		}, 100, 100);
+		// Timer cd = new Timer();
+		// cd.schedule(new TimerTask()
+		// {
+		//
+		//
+		// public void run()
+		// {
+		//
+		//
+		// if (dragCD)
+		// {
+		// dragged += 1;
+		// // System.out.println(dragged + "?");
+		// if (dragged >= 5)
+		// {
+		// // System.out.println(dragged + "!");
+		// if (doFileOpened) core.midiNavigate(((long) slider.getValue()) *
+		// 1000);
+		// dragCD = false;
+		// }
+		// // System.out.println(dragCD);
+		// }
+		// }
+		// }, 100, 100);
 		
 		JButton btnOpen = new JButton("Open...");
-		btnOpen.addMouseListener(new MouseAdapter()
+		btnOpen.addActionListener(new ActionListener()
 		{
 			
 			
-			@Override
-			public void mouseClicked(MouseEvent e)
+			public void actionPerformed(ActionEvent e)
 			{
 				
 				
@@ -364,44 +438,100 @@ public class MIDIplayer extends JFrame
 		contentPane.add(btnOpen);
 		
 		fName = new JTextField();
+		fName.setFocusable(false);
 		fName.setEditable(false);
 		fName.setBounds(124, 13, 456, 24);
 		contentPane.add(fName);
 		fName.setColumns(10);
 		
 		slider = new JSlider();
-		slider.addMouseMotionListener(new MouseMotionAdapter()
+		slider.setMaximum(0);
+		slider.addKeyListener(new KeyAdapter()
 		{
 			
 			
 			@Override
-			public void mouseDragged(MouseEvent e)
+			public void keyPressed(KeyEvent e)
 			{
 				
 				
-				if (dragNotFirstRun)
+				if (e.getKeyCode() == KeyEvent.VK_LEFT)
 				{
-					dragCD = true;
-					dragged = 0;
+					isKeySeeking = true;
+					if (!isDragging && doFileOpened) slider.setValue(slider.getValue() - 5000);
 				}
-				else
+				else if (e.getKeyCode() == KeyEvent.VK_RIGHT)
 				{
-					dragNotFirstRun = true;
+					isKeySeeking = true;
+					if (!isDragging && doFileOpened) slider.setValue(slider.getValue() + 5000);
+				}
+			}
+			
+			@Override
+			public void keyReleased(KeyEvent e)
+			{
+				
+				
+				if ((e.getKeyCode() == KeyEvent.VK_LEFT | e.getKeyCode() == KeyEvent.VK_RIGHT) && !isDragging
+						&& doFileOpened)
+					core.midiNavigate(((long) slider.getValue()) * 1000);
+				isKeySeeking = false;
+			}
+		});
+		slider.addMouseListener(new MouseAdapter()
+		{
+			
+			
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				
+				
+				isDragging = true;
+			}
+			
+			@Override
+			public void mouseReleased(MouseEvent e)
+			{
+				
+				
+				if (isDragging)
+				{
+					if (doFileOpened) core.midiNavigate(((long) slider.getValue()) * 1000);
+					isDragging = false;
 				}
 			}
 		});
+		// slider.addMouseMotionListener(new MouseMotionAdapter()
+		// {
+		
+		// @Override
+		// public void mouseDragged(MouseEvent e)
+		// {
+		//
+		//
+		// if (dragNotFirstRun)
+		// {
+		// dragCD = true;
+		// dragged = 0;
+		// }
+		// else
+		// {
+		// dragNotFirstRun = true;
+		// }
+		// }
+		// });
 		
 		slider.setValue(0);
 		slider.setBounds(84, 50, 426, 24);
 		contentPane.add(slider);
 		
 		btnPlaypause = new JButton("Play");
-		btnPlaypause.addMouseListener(new MouseAdapter()
+		btnPlaypause.addActionListener(new ActionListener()
 		{
 			
 			
-			@Override
-			public void mouseClicked(MouseEvent e)
+			public void actionPerformed(ActionEvent e)
 			{
 				
 				
@@ -416,12 +546,11 @@ public class MIDIplayer extends JFrame
 		contentPane.add(btnPlaypause);
 		
 		btnStop = new JButton("Stop");
-		btnStop.addMouseListener(new MouseAdapter()
+		btnStop.addActionListener(new ActionListener()
 		{
 			
 			
-			@Override
-			public void mouseClicked(MouseEvent e)
+			public void actionPerformed(ActionEvent e)
 			{
 				
 				
@@ -432,12 +561,11 @@ public class MIDIplayer extends JFrame
 		contentPane.add(btnStop);
 		
 		btnRew = new JButton("Rew.");
-		btnRew.addMouseListener(new MouseAdapter()
+		btnRew.addActionListener(new ActionListener()
 		{
 			
 			
-			@Override
-			public void mouseClicked(MouseEvent e)
+			public void actionPerformed(ActionEvent e)
 			{
 				
 				
@@ -448,12 +576,11 @@ public class MIDIplayer extends JFrame
 		contentPane.add(btnRew);
 		
 		btnFf = new JButton("F.F.");
-		btnFf.addMouseListener(new MouseAdapter()
+		btnFf.addActionListener(new ActionListener()
 		{
 			
 			
-			@Override
-			public void mouseClicked(MouseEvent e)
+			public void actionPerformed(ActionEvent e)
 			{
 				
 				
@@ -477,12 +604,11 @@ public class MIDIplayer extends JFrame
 		contentPane.add(lblMidiDevice);
 		
 		JButton btnChangeDevice = new JButton("Change Device");
-		btnChangeDevice.addMouseListener(new MouseAdapter()
+		btnChangeDevice.addActionListener(new ActionListener()
 		{
 			
 			
-			@Override
-			public void mouseClicked(MouseEvent e)
+			public void actionPerformed(ActionEvent e)
 			{
 				
 				
@@ -494,6 +620,7 @@ public class MIDIplayer extends JFrame
 		contentPane.add(btnChangeDevice);
 		
 		currentTime = new JTextField();
+		currentTime.setFocusable(false);
 		currentTime.setHorizontalAlignment(SwingConstants.TRAILING);
 		currentTime.setText("0:00");
 		currentTime.setEditable(false);
@@ -502,6 +629,7 @@ public class MIDIplayer extends JFrame
 		currentTime.setColumns(10);
 		
 		totalTime = new JTextField();
+		totalTime.setFocusable(false);
 		totalTime.setText("0:00");
 		totalTime.setHorizontalAlignment(SwingConstants.TRAILING);
 		totalTime.setEditable(false);
@@ -510,11 +638,11 @@ public class MIDIplayer extends JFrame
 		contentPane.add(totalTime);
 		
 		tglbtnRepeat = new JToggleButton("Repeat");
-		tglbtnRepeat.addChangeListener(new ChangeListener()
+		tglbtnRepeat.addActionListener(new ActionListener()
 		{
 			
 			
-			public void stateChanged(ChangeEvent e)
+			public void actionPerformed(ActionEvent e)
 			{
 				
 				
@@ -544,6 +672,7 @@ public class MIDIplayer extends JFrame
 		contentPane.add(tglbtnRepeat);
 		
 		txtCurrentdev = new JTextField();
+		txtCurrentdev.setFocusable(false);
 		txtCurrentdev.setEditable(false);
 		txtCurrentdev.setBounds(124, 124, 306, 24);
 		contentPane.add(txtCurrentdev);
