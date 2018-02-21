@@ -596,6 +596,11 @@ public class MIDIplayer extends JFrame
 		contentPane.add(scrollPane);
 		
 		list = new JList<String>();
+		// list.addListSelectionListener(new ListSelectionListener() {
+		// public void valueChanged(ListSelectionEvent e) {
+		// System.out.println(list.getSelectedIndex());
+		// }
+		// });
 		scrollPane.setViewportView(list);
 		
 		JLabel lblMidiDevice = new JLabel("MIDI Device:");

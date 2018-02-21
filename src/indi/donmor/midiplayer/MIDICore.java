@@ -12,7 +12,7 @@ public class MIDICore
 {
 	
 	
-	public int			devID;
+	public int			devID, devDiv;
 	
 	private MidiDevice	midid;
 	
@@ -36,12 +36,31 @@ public class MIDICore
 	public MIDICore(int devi)
 	{
 		
-		devID = devi;
 		repeat = cycleType.none;
+		devs = MidiSystem.getMidiDeviceInfo();
+		// devx = new String[devs.length];
+		String[] src = new String[0];
+		for (int i = 0; i < devs.length; i++)
+		{
+			String s = devs[i].toString();
+			if (s != "Real Time Sequencer")
+			{
+				if (s == "Gervill") s = "Internal";
+				String[] dest = new String[src.length + 1];
+				System.arraycopy(src, 0, dest, 0, src.length);
+				dest[src.length] = s;
+				src = dest;
+			}
+			else
+			{
+				devDiv = i;
+				// System.out.println(i);
+			}
+		}
+		devx = src;
+		devID = devFix(devi);
 		try
 		{
-			
-			devs = MidiSystem.getMidiDeviceInfo();
 			try
 			{
 				midid = MidiSystem.getMidiDevice(devs[devID]);
@@ -61,12 +80,6 @@ public class MIDICore
 		{
 			// System.out.println(e);
 		}
-		devx = new String[devs.length];
-		for (int i = 0; i < devs.length; i++)
-		{
-			devx[i] = devs[i].toString();
-		}
-		
 	}
 	
 	public void changeDev(int id)
@@ -76,7 +89,7 @@ public class MIDICore
 		midiPauseProg = midip.getMicrosecondPosition();
 		long pauseProg = midiPauseProg;
 		// System.out.println(midiPauseProg);
-		devID = id;
+		devID = devFix(id);
 		boolean running = midip.isRunning();
 		try
 		{
@@ -268,5 +281,15 @@ public class MIDICore
 		// midiPauseProg = 0;
 		// }
 		
+	}
+	
+	private int devFix(int id)
+	{
+		
+		
+		if (id >= devDiv)
+			return id + 1;
+		else
+			return id;
 	}
 }

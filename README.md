@@ -13,8 +13,10 @@
 * #### Coming soon (in 1000yrs =w= )
 
 ## Bugs
-* #### The "Real Time Sequencer" doesn't work. Someday I may remove it from the list.
-* #### More bugs to find (Have been learning Java for 2 days...)
+* #### To be found (Have been learning Java for 2 days...)
+
+## Updates
+* #### 2018/2/21: Now using ActionListeners; Removed "Real Time Sequencer" and renamed "Gervill" to "Internal".
 
 #### This project is open-sourced and licensed under MIT.
 (So just IGNORE the comment messsssssssssssss)
