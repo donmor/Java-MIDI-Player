@@ -22,7 +22,7 @@ public class MIDICore {
 
 	public String[] devx;
 
-	public long midiPauseProg, midiLoopStart, midiLoopEnd;
+	public long midiPauseProg, midiPauseProgMs, midiLoopStart, midiLoopEnd;
 
 	public enum cycleType {
 		none, whole, partial
@@ -31,10 +31,8 @@ public class MIDICore {
 	public cycleType repeat;
 
 	public MIDICore(int devi) {
-
 		repeat = cycleType.none;
 		devs = MidiSystem.getMidiDeviceInfo();
-		// devx = new String[devs.length];
 		String[] src = new String[0];
 		for (int i = 0; i < devs.length; i++) {
 			String s = devs[i].toString();
@@ -47,7 +45,6 @@ public class MIDICore {
 				src = dest;
 			} else {
 				devDiv = i;
-				// System.out.println(i);
 			}
 		}
 		devx = src;
@@ -56,7 +53,6 @@ public class MIDICore {
 			try {
 				midid = MidiSystem.getMidiDevice(devs[devID]);
 			} catch (Exception e) {
-				// System.out.println(e);
 				devID = 0;
 				midid = MidiSystem.getMidiDevice(devs[devID]);
 			}
@@ -65,15 +61,13 @@ public class MIDICore {
 			midip.open();
 			midip.getTransmitter().setReceiver(midid.getReceiver());
 		} catch (Exception e) {
-			// System.out.println(e);
+
 		}
 	}
 
 	public void changeDev(int id) {
-
-		midiPauseProg = midip.getMicrosecondPosition();
-		long pauseProg = midiPauseProg;
-		// System.out.println(midiPauseProg);
+		midiPauseProg = midip.getTickPosition();
+		midiPauseProgMs = midip.getMicrosecondPosition();
 		devID = devFix(id);
 		boolean running = midip.isRunning();
 		try {
@@ -90,30 +84,26 @@ public class MIDICore {
 			}
 
 		} catch (Exception e) {
-			// System.out.println(e);
+
 		}
-		midiPauseProg = pauseProg;
-		// System.out.println(midiPauseProg);
-		midip.setMicrosecondPosition(midiPauseProg);
+		midip.setTickPosition(midiPauseProg);
 	}
 
 	public long getMidiProg() {
-
 		return midip.getMicrosecondPosition();
 	}
 
 	public long getMidiTickProg() {
-
 		return midip.getTickPosition();
 	}
 
 	public void changeMidi(File file, boolean playNow) {
-
 		try {
 			sequence = MidiSystem.getSequence(file);
 			midip.setSequence(sequence);
 			changeCycleMethod();
 			midiPauseProg = 0;
+			midiPauseProgMs = 0;
 			if (playNow)
 				midip.start();
 		} catch (Exception e) {
@@ -122,52 +112,51 @@ public class MIDICore {
 	}
 
 	public void shutdown() {
-
 		midip.close();
 		midid.close();
 	}
 
 	public boolean togglePause() {
-
-		boolean i = false;
 		try {
 			if (isPlaying()) {
-				midiPauseProg = midip.getMicrosecondPosition();
+				midiPauseProg = midip.getTickPosition();
+				midiPauseProgMs = midip.getMicrosecondPosition();
 				midip.stop();
 			} else {
 				midip.start();
-				midip.setMicrosecondPosition(midiPauseProg);
+				midip.setTickPosition(midiPauseProg);
 			}
-			i = true;
+			return true;
 		} catch (Exception e) {
 			if (e instanceof java.lang.IllegalStateException) {
-				i = false;
+				return false;
 			}
 		}
-		return i;
-
+		return false;
 	}
 
 	public void midiStop() {
-
 		if (isPlaying())
 			midip.stop();
-		midip.setMicrosecondPosition(0);
+		midip.setTickPosition(0);
 		midiPauseProg = 0;
+		midiPauseProgMs = 0;
 	}
 
 	public Boolean isPlaying() {
-
 		return midip.isRunning();
 	}
 
 	public long getLength() {
-
 		return midip.getMicrosecondLength();
 	}
 
-	public cycleType changeCycleMethod() {
+	public long getTickLength() {
 
+		return midip.getTickLength();
+	}
+
+	public cycleType changeCycleMethod() {
 		switch (repeat) {
 		case none:
 			midip.setLoopCount(0);
@@ -179,30 +168,12 @@ public class MIDICore {
 			break;
 		case partial:
 			midip.setLoopCount(Sequencer.LOOP_CONTINUOUSLY);
-			float fps = sequence.getDivisionType();
-			// System.out.println(fps);
-			try {
-				if (midiLoopStart < midiLoopEnd) {
-					if (fps == Sequence.PPQ) {
-						midip.setLoopStartPoint((long) (midiLoopStart
-								* midip.getTempoInBPM()
-								* sequence.getResolution() / 60000000));
-						midip.setLoopEndPoint((long) (midiLoopEnd
-								* midip.getTempoInBPM()
-								* sequence.getResolution() / 60000000));
-					} else if (fps > Sequence.PPQ) {
-						midip.setLoopStartPoint((long) (midiLoopStart * fps
-								* sequence.getResolution() / 1000000));
-						midip.setLoopEndPoint((long) (midiLoopEnd * fps
-								* sequence.getResolution() / 1000000));
-					} else {
-						throw new Exception();
-					}
-				} else {
-					throw new Exception();
-				}
-			} catch (Exception e) {
-				repeat = cycleType.none;
+			if (midiLoopStart < midiLoopEnd) {
+				midip.setLoopStartPoint(midiLoopStart);
+				midip.setLoopEndPoint(midiLoopEnd);
+			} else {
+				midip.setLoopStartPoint(0);
+				midip.setLoopEndPoint(-1);
 			}
 			break;
 		default:
@@ -212,32 +183,57 @@ public class MIDICore {
 	}
 
 	public void midiNavigate(long time) {
-
-		if (!((repeat == cycleType.partial && time >= midiLoopEnd) | time >= midip
-				.getMicrosecondLength())) {
+		long timeTicks = msToTicks(time);
+		if (!(time != 0 && timeTicks == 0) && !((repeat == cycleType.partial && timeTicks >= midiLoopEnd)
+				| time >= midip.getMicrosecondLength())) {
 			if (time >= 0) {
 				midip.setMicrosecondPosition(time);
-				midiPauseProg = time;
+				midiPauseProg = timeTicks;
+				midiPauseProgMs = time;
+
 			} else {
 				midip.setMicrosecondPosition(0);
 				midiPauseProg = 0;
+				midiPauseProgMs = 0;
 			}
 		}
+	}
 
-		// else
-		// {
-		// midip.setMicrosecondPosition(0);
-		// midiPauseProg = 0;
-		// }
-
+	public void midiTickNavigate(long time) {
+		if (!((repeat == cycleType.partial && time >= midiLoopEnd) | time >= midip.getTickLength())) {
+			if (time >= 0) {
+				midip.setTickPosition(time);
+				midiPauseProg = time;
+				midiPauseProgMs = midip.getMicrosecondPosition();
+			} else {
+				midip.setTickPosition(0);
+				midiPauseProg = 0;
+				midiPauseProgMs = 0;
+			}
+		}
 	}
 
 	private int devFix(int id) {
-
 		if (id >= devDiv)
 			return id + 1;
 		else
 			return id;
 	}
-}
 
+	public long msToTicks(long ms) {
+		if (ms == 0)
+			return 0;
+		float fps = sequence.getDivisionType();
+		try {
+			if (fps == Sequence.PPQ) {
+				return (long) (ms * midip.getTempoInBPM() * sequence.getResolution() / 60000000);
+			} else if (fps > Sequence.PPQ) {
+				return (long) (ms * fps * sequence.getResolution() / 1000000);
+			} else {
+				throw new Exception();
+			}
+		} catch (Exception e) {
+			return 0;
+		}
+	}
+}
