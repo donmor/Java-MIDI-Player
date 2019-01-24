@@ -128,6 +128,7 @@ public class MIDIplayer extends JFrame {
 				list.setListData(core.devx);
 				list.setSelectedIndex(core.devID);
 				txtCurrentdev.setText(list.getSelectedValue());
+				txtCurrentdev.setToolTipText("<html>Description:	" + core.devd[list.getSelectedIndex()][0] + "<br>Vendor:		" + core.devd[list.getSelectedIndex()][1] + "<br>Version:	" + core.devd[list.getSelectedIndex()][2] + "</html>");
 				Thread cycle = new Thread() {
 
 					public void run() {
@@ -386,6 +387,7 @@ public class MIDIplayer extends JFrame {
 
 				core.changeDev(list.getSelectedIndex());
 				txtCurrentdev.setText(list.getSelectedValue());
+				txtCurrentdev.setToolTipText("<html>Description:	" + core.devd[list.getSelectedIndex()][0] + "<br>Vendor:		" + core.devd[list.getSelectedIndex()][1] + "<br>Version:	" + core.devd[list.getSelectedIndex()][2] + "</html>");
 			}
 		});
 		btnChangeDevice.setBounds(444, 124, 136, 24);

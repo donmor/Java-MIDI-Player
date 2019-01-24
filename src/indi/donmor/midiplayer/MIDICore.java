@@ -2,8 +2,12 @@
 package indi.donmor.midiplayer;
 
 import java.io.File;
+import java.util.ArrayList;
+
 import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiSystem;
+import javax.sound.midi.MidiUnavailableException;
+import javax.sound.midi.Receiver;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
 import javax.sound.midi.MidiDevice.Info;
@@ -21,6 +25,8 @@ public class MIDICore {
 	private Info[] devs;
 
 	public String[] devx;
+	
+	public String[][] devd;
 
 	public long midiPauseProg, midiPauseProgMs, midiLoopStart, midiLoopEnd;
 
@@ -32,22 +38,39 @@ public class MIDICore {
 
 	public MIDICore(int devi) {
 		repeat = cycleType.none;
-		devs = MidiSystem.getMidiDeviceInfo();
-		String[] src = new String[0];
-		for (int i = 0; i < devs.length; i++) {
-			String s = devs[i].toString();
-			if (s != "Real Time Sequencer") {
+		Info[] vdevs = MidiSystem.getMidiDeviceInfo();
+		ArrayList<Info> xdevs = new ArrayList<Info>();
+		ArrayList<String> src = new ArrayList<String>();
+		ArrayList<String[]> dsc = new ArrayList<String[]>();
+		for (Info dev : vdevs) {
+			String s = dev.getName();
+			try {
+				MidiDevice vc = MidiSystem.getMidiDevice(dev);
+				vc.getReceiver();
+				vc.close();
+			} catch (MidiUnavailableException e) {
+				s = "$NORECEIVER";
+			}
+			if (s != "Real Time Sequencer" && s != "$NORECEIVER") {
+				xdevs.add(dev);
 				if (s == "Gervill")
 					s = "Internal";
-				String[] dest = new String[src.length + 1];
-				System.arraycopy(src, 0, dest, 0, src.length);
-				dest[src.length] = s;
-				src = dest;
-			} else {
-				devDiv = i;
+				String dest = s;
+				src.add(dest);
+				String[] destc = new String[3];
+				destc[0] = dev.getDescription();
+				destc[1] = dev.getVendor();
+				destc[2] = dev.getVersion();
+				dsc.add(destc);
 			}
 		}
-		devx = src;
+		devDiv = xdevs.size();
+		Info[] arrw = new Info[xdevs.size()];
+		devs = xdevs.toArray(arrw);
+		String[] arrx = new String[src.size()];
+		devx = src.toArray(arrx);
+		String[][] arry = new String[dsc.size()][3];
+		devd = dsc.toArray(arry);
 		devID = devFix(devi);
 		try {
 			try {
