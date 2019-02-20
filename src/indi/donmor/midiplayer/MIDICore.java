@@ -9,13 +9,11 @@ import javax.sound.midi.MidiSystem;
 import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
+import javax.sound.midi.Soundbank;
+import javax.sound.midi.Synthesizer;
 import javax.sound.midi.MidiDevice.Info;
 
 public class MIDICore {
-
-	public int devID, devDiv;
-
-	private MidiDevice midid;
 
 	private Sequencer midip;
 
@@ -23,8 +21,14 @@ public class MIDICore {
 
 	private Info[] devs;
 
+	public int devID, devDiv;
+
+	private MidiDevice midid;
+
+	public File[] soundbanks;
+
 	public String[] devx;
-	
+
 	public String[][] devd;
 
 	public long midiPauseProg, midiPauseProgMs, midiLoopStart, midiLoopEnd;
@@ -35,7 +39,7 @@ public class MIDICore {
 
 	public cycleType repeat;
 
-	public MIDICore(int devi) {
+	public MIDICore() {
 		repeat = cycleType.none;
 		Info[] vdevs = MidiSystem.getMidiDeviceInfo();
 		ArrayList<Info> xdevs = new ArrayList<Info>();
@@ -70,14 +74,8 @@ public class MIDICore {
 		devx = src.toArray(arrx);
 		String[][] arry = new String[dsc.size()][3];
 		devd = dsc.toArray(arry);
-		devID = devFix(devi);
 		try {
-			try {
-				midid = MidiSystem.getMidiDevice(devs[devID]);
-			} catch (Exception e) {
-				devID = 0;
-				midid = MidiSystem.getMidiDevice(devs[devID]);
-			}
+			midid = MidiSystem.getMidiDevice(devs[0]);
 			midid.open();
 			midip = MidiSystem.getSequencer(false);
 			midip.open();
@@ -93,22 +91,43 @@ public class MIDICore {
 		devID = devFix(id);
 		boolean running = midip.isRunning();
 		try {
-			shutdown();
+			midip.close();
+			midid.close();
 			midid = MidiSystem.getMidiDevice(devs[devID]);
 			midid.open();
-			midip = MidiSystem.getSequencer(false);
+			if (midid.getDeviceInfo().getName().equals("Gervill"))
+				initSoundbank();
 			midip.open();
 			midip.getTransmitter().setReceiver(midid.getReceiver());
 			midip.setSequence(sequence);
 			changeCycleMethod();
-			if (running) {
+			if (running)
 				midip.start();
-			}
 
 		} catch (Exception e) {
 
 		}
 		midip.setTickPosition(midiPauseProg);
+	}
+
+	public void setSoundbank(File[] sb) {
+		soundbanks = sb;
+		if (midid.getDeviceInfo().getName().equals("Gervill"))
+			changeDev(devID);
+	}
+
+	private void initSoundbank() {
+		Synthesizer midis = (Synthesizer) midid;
+		if (soundbanks != null) {
+			for (File sb : soundbanks) {
+				try {
+					Soundbank sbx = MidiSystem.getSoundbank(sb);
+					midis.loadAllInstruments(sbx);
+				} catch (Exception e) {
+
+				}
+			}
+		}
 	}
 
 	public long getMidiProg() {
@@ -150,9 +169,8 @@ public class MIDICore {
 			}
 			return true;
 		} catch (Exception e) {
-			if (e instanceof java.lang.IllegalStateException) {
+			if (e instanceof java.lang.IllegalStateException)
 				return false;
-			}
 		}
 		return false;
 	}
@@ -174,7 +192,6 @@ public class MIDICore {
 	}
 
 	public long getTickLength() {
-
 		return midip.getTickLength();
 	}
 
@@ -182,6 +199,8 @@ public class MIDICore {
 		switch (repeat) {
 		case none:
 			midip.setLoopCount(0);
+			midip.setLoopStartPoint(0);
+			midip.setLoopEndPoint(-1);
 			break;
 		case whole:
 			midip.setLoopCount(Sequencer.LOOP_CONTINUOUSLY);
@@ -247,13 +266,12 @@ public class MIDICore {
 			return 0;
 		float fps = sequence.getDivisionType();
 		try {
-			if (fps == Sequence.PPQ) {
+			if (fps == Sequence.PPQ)
 				return (long) (ms * midip.getTempoInBPM() * sequence.getResolution() / 60000000);
-			} else if (fps > Sequence.PPQ) {
+			else if (fps > Sequence.PPQ)
 				return (long) (ms * fps * sequence.getResolution() / 1000000);
-			} else {
+			else
 				throw new Exception();
-			}
 		} catch (Exception e) {
 			return 0;
 		}

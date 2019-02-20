@@ -4,10 +4,15 @@ package indi.donmor.midiplayer;
 import java.awt.EventQueue;
 import java.awt.Image;
 import java.awt.Toolkit;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 import java.util.Properties;
 import indi.donmor.midiplayer.MIDICore;
 import indi.donmor.midiplayer.MIDICore.cycleType;
@@ -73,6 +78,8 @@ public class MIDIplayer extends JFrame {
 
 	}
 
+	private static File[] soundfonts;
+
 	/**
 	 * Launch the application.
 	 */
@@ -92,29 +99,42 @@ public class MIDIplayer extends JFrame {
 				int vY = (toolkit.getScreenSize().height - 400) / 2;
 				try {
 					File propFile = new File("midiplayer.properties");
-					if (!propFile.exists()) {
-						throw new IOException();
+					if (propFile.exists()) {
+						InputStream propInputStream = new BufferedInputStream(new FileInputStream(propFile));
+						prop.load(new InputStreamReader(propInputStream, "UTF-8"));
+						vRep = Boolean.valueOf(prop.getProperty("repeat"));
+						try {
+							vLd = new File(prop.getProperty("last-directory"));
+						} catch (Exception e) {
+
+						}
+						try {
+							vDev = Integer.valueOf(prop.getProperty("default-device"));
+						} catch (Exception e) {
+
+						}
+						try {
+							vX = Integer.valueOf(prop.getProperty("last-x"));
+						} catch (Exception e) {
+
+						}
+						try {
+							vY = Integer.valueOf(prop.getProperty("last-y"));
+						} catch (Exception e) {
+
+						}
+						try {
+							String[] sf2s = prop.getProperty("soundfonts").split(";");
+							int e = sf2s.length;
+							File[] sf2f = new File[e];
+							for (int i = 0; i < e; i++)
+								sf2f[i] = new File(sf2s[i]);
+							soundfonts = sf2f;
+						} catch (Exception e) {
+
+						}
 					}
-					FileInputStream propInputStream = new FileInputStream(propFile);
-					prop.load(propInputStream);
-					vRep = Boolean.valueOf(prop.getProperty("repeat"));
-					try {
-						vLd = new File(prop.getProperty("last-directory"));
-					} catch (Exception e) {
-					}
-					try {
-						vDev = Integer.valueOf(prop.getProperty("default-device"));
-					} catch (Exception e) {
-					}
-					try {
-						vX = Integer.valueOf(prop.getProperty("last-x"));
-					} catch (Exception e) {
-					}
-					try {
-						vY = Integer.valueOf(prop.getProperty("last-y"));
-					} catch (Exception e) {
-					}
-				} catch (IOException e) {
+				} catch (Exception e) {
 
 				}
 				try {
@@ -124,11 +144,14 @@ public class MIDIplayer extends JFrame {
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-				core = new MIDICore(vDev);
+				core = new MIDICore();
+				core.changeDev(vDev);
 				list.setListData(core.devx);
 				list.setSelectedIndex(core.devID);
 				txtCurrentdev.setText(list.getSelectedValue());
-				txtCurrentdev.setToolTipText("<html>Description:	" + core.devd[list.getSelectedIndex()][0] + "<br>Vendor:		" + core.devd[list.getSelectedIndex()][1] + "<br>Version:	" + core.devd[list.getSelectedIndex()][2] + "</html>");
+				txtCurrentdev.setToolTipText("<html>Description:	" + core.devd[list.getSelectedIndex()][0]
+						+ "<br>Vendor:		" + core.devd[list.getSelectedIndex()][1] + "<br>Version:	"
+						+ core.devd[list.getSelectedIndex()][2] + "</html>");
 				Thread cycle = new Thread() {
 
 					public void run() {
@@ -167,18 +190,44 @@ public class MIDIplayer extends JFrame {
 				if (vLd != null && vLd.exists())
 					lastDirectory = vLd;
 				tglbtnRepeat.setSelected(vRep);
-				if (tglbtnRepeat.isSelected()) {
+				if (tglbtnRepeat.isSelected())
 					core.repeat = cycleType.whole;
-				} else {
+				else
 					core.repeat = cycleType.none;
-				}
-
 				String arg = "";
+				ArrayList<File> sf2 = new ArrayList<File>();
 				try {
-					arg = args[0];
+					String xarg = "";
+					for (String ava : args) {
+						if (arg.equals("")) {
+							arg = ava;
+							continue;
+						}
+						if (ava.startsWith("-")) {
+							xarg = ava;
+							continue;
+						}
+						if (!xarg.equals("")) {
+							if (xarg.equals("-soundfont") || xarg.equals("-sf2")) {
+								File f = new File(ava);
+								if (f.getName().endsWith(".sf2") && f.exists())
+									sf2.add(f);
+							} else {
+								xarg = "";
+							}
+							continue;
+						}
+					}
 				} catch (Exception e) {
+
 				}
 				File argFs = new File(arg);
+				if (sf2.size() > 0) {
+					File[] array = new File[sf2.size()];
+					soundfonts = sf2.toArray(array);
+				}
+				if (soundfonts != null && soundfonts.length > 0)
+					core.setSoundbank(soundfonts);
 				if (arg != "" && (argFs.getName().endsWith(".mid") || argFs.getName().endsWith(".rmi"))
 						&& argFs.exists()) {
 					midiFile = argFs;
@@ -212,9 +261,9 @@ public class MIDIplayer extends JFrame {
 						}
 					}
 					Properties prop = new Properties();
-					FileInputStream propInputStream = new FileInputStream(propFile);
-					prop.load(propInputStream);
-					FileOutputStream propOutputStream = new FileOutputStream(propFile);
+					InputStream propInputStream = new BufferedInputStream(new FileInputStream(propFile));
+					prop.load(new InputStreamReader(propInputStream, "UTF-8"));
+					FileOutputStream propOutputStream = new FileOutputStream(propFile, false);
 					prop.setProperty("default-device", String.valueOf(core.devID));
 					prop.setProperty("last-y", String.valueOf(getY()));
 					prop.setProperty("last-x", String.valueOf(getX()));
@@ -223,7 +272,14 @@ public class MIDIplayer extends JFrame {
 					else
 						prop.setProperty("last-directory", "MIDIPlayer properties");
 					prop.setProperty("repeat", String.valueOf(tglbtnRepeat.isSelected()));
-					prop.store(propOutputStream, null);
+					String propSf2 = ";";
+					if (soundfonts != null) {
+						propSf2 = "";
+						for (File sf2 : soundfonts)
+							propSf2 += sf2.getPath() + ";";
+					}
+					prop.setProperty("soundfonts", propSf2.substring(0, propSf2.length() - 1));
+					prop.store(new OutputStreamWriter(propOutputStream, "UTF-8"), null);
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
@@ -325,9 +381,8 @@ public class MIDIplayer extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 
 				core.togglePause();
-				if (!doFileOpened) {
+				if (!doFileOpened)
 					fileOpenHandle();
-				}
 			}
 		});
 		btnPlaypause.setBounds(14, 87, 96, 24);
@@ -387,7 +442,9 @@ public class MIDIplayer extends JFrame {
 
 				core.changeDev(list.getSelectedIndex());
 				txtCurrentdev.setText(list.getSelectedValue());
-				txtCurrentdev.setToolTipText("<html>Description:	" + core.devd[list.getSelectedIndex()][0] + "<br>Vendor:		" + core.devd[list.getSelectedIndex()][1] + "<br>Version:	" + core.devd[list.getSelectedIndex()][2] + "</html>");
+				txtCurrentdev.setToolTipText("<html>Description:	" + core.devd[list.getSelectedIndex()][0]
+						+ "<br>Vendor:		" + core.devd[list.getSelectedIndex()][1] + "<br>Version:	"
+						+ core.devd[list.getSelectedIndex()][2] + "</html>");
 			}
 		});
 		btnChangeDevice.setBounds(444, 124, 136, 24);
@@ -415,16 +472,12 @@ public class MIDIplayer extends JFrame {
 		tglbtnRepeat.addActionListener(new ActionListener() {
 
 			public void actionPerformed(ActionEvent e) {
-				if (tglbtnRepeat.isSelected()) {
-					core.midiLoopStart = 16800;
-					core.midiLoopEnd = 125280;
-					core.repeat = cycleType.partial;
-				} else {
+				if (tglbtnRepeat.isSelected())
+					core.repeat = cycleType.whole;
+				else
 					core.repeat = cycleType.none;
-				}
-				if (doFileOpened) {
+				if (doFileOpened)
 					core.changeCycleMethod();
-				}
 			}
 		});
 		tglbtnRepeat.setBounds(454, 87, 126, 24);
@@ -453,11 +506,10 @@ public class MIDIplayer extends JFrame {
 
 			@Override
 			public boolean accept(File f) {
-				if (f.getName().endsWith(".mid") || f.getName().endsWith(".rmi") || f.isDirectory()) {
+				if (f.getName().endsWith(".mid") || f.getName().endsWith(".rmi") || f.isDirectory())
 					return true;
-				} else {
+				else
 					return false;
-				}
 			}
 		});
 		int index = JFileChooser1.showOpenDialog(getContentPane());
